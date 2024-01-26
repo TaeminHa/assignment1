@@ -11,6 +11,8 @@
 #define BUFFER_SIZE 1000
 #define MAX_CLIENT 10
 
+struct sockaddr_in server_addr, client_addr;
+
 /* get_time function */
 /* Input: None */
 /* Output: current time in seconds */
@@ -25,10 +27,27 @@ get_time(void) {
 void
 handle_server(int port) {
     /* TODO: Implement server mode operation here */
+    // https://man7.org/linux/man-pages/man2/socket.2.html - man page with examples
     /* 1. Create a TCP/IP socket with `socket` system call */
+    // AF_INET6 = IPv6 protocol; SOCK_STREAM = TCP, 0 = single protocol per socket
+    int server_fd = socket(AF_INET6, SOCK_STREAM, 0);
+    if (server_fd == -1) return;
+    
+    // create socket
+    server_addr.sin_family = AF_INET;
+    // IP address = INADDR_ANY (kernel chooses)
+    server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    // Port number = parameter
+    server_addr.sin_port = htons(port);
+
     /* 2. `bind` socket to the given port number */
+    bind(server_fd, (struct sockaddr*)&server_addr, sizeof(server_addr));
     /* 3. `listen` for TCP connections */
+    listen(server_fd, MAX_CLIENT);
     /* 4. Wait for the client connection with `accept` system call */
+    socklen_t client_length = sizeof(client_addr);
+    // client_addr and client_length are resultant parameter
+    int client_fd = accept(server_fd,  (struct sockaddr*)&client_addr, &client_length);
     /* 5. After the connection is established, received data in chunks of 1000 bytes */
     /* 6. When the connection is closed, the program should print out the elapsed time, */
     /*    the total number of bytes received (in kilobytes), and the rate */ 

@@ -75,15 +75,20 @@ handle_client(const char *addr, int port, int duration) {
     int connect_status = connect(client_fd, (struct sockaddr *) &server_addr, sizeof(server_addr));
     if (connect_status == -1) return;
     /* 3. Send data to the connected server in chunks of 1000bytes */
+    char msg[BUFFER_SIZE];
+    int bytes_sent = 0;
     double end = get_time() + duration;
     while (get_time() < end) {
-        // send(client_fd, )
+        send(client_fd, msg, BUFFER_SIZE, 0);
+        bytes_sent += BUFFER_SIZE;
     }
     /* 4. Close the connection after `duration` seconds */
+    close(client_fd);
     /* 5. When the connection is closed, the program should print out the elapsed time, */
     /*    the total number of bytes sent (in kilobytes), and the rate */ 
     /*    at which the program sent data (in Mbps) */
-
+    //?????
+    printf("%f kilobytes sent in %f seconds at the rate of %f Mbps", bytes_sent/1000, duration, ((bytes_sent/1000000) / duration));
     return;
 }
 

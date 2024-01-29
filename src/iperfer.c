@@ -75,8 +75,8 @@ handle_client(const char *addr, int port, int duration) {
     int connect_status = connect(client_fd, (struct sockaddr *) &server_addr, sizeof(server_addr));
     if (connect_status == -1) return;
     /* 3. Send data to the connected server in chunks of 1000bytes */
-    clock_t start = clock(), end = clock();
-    while ((end - start)/CLOCKS_PER_SEC < duration) {
+    double end = get_time() + duration;
+    while (get_time() < end) {
         // send(client_fd, )
     }
     /* 4. Close the connection after `duration` seconds */

@@ -50,9 +50,17 @@ handle_server(int port) {
     // client_addr and client_length are resultant parameter
     int client_fd = accept(server_fd,  (struct sockaddr*)&client_addr, &client_length);
     /* 5. After the connection is established, received data in chunks of 1000 bytes */
+    int bytes_received = 0;
+    double start = get_time();
+
+    // TODO : How does the server know when connection closes
+    // like what goes into the while (???)
+
     /* 6. When the connection is closed, the program should print out the elapsed time, */
     /*    the total number of bytes received (in kilobytes), and the rate */ 
     /*    at which the program received data (in Mbps) */
+    double duration = get_time() - start;
+    printf("%f kilobytes received in %f seconds at the rate of %f Mbps", bytes_received/1000, duration, ((bytes_received/1e6) / duration));
 
     return;
 }
@@ -75,7 +83,9 @@ handle_client(const char *addr, int port, int duration) {
     int connect_status = connect(client_fd, (struct sockaddr *) &server_addr, sizeof(server_addr));
     if (connect_status == -1) return;
     /* 3. Send data to the connected server in chunks of 1000bytes */
-    char msg[BUFFER_SIZE];
+    char* msg;
+    memset(msg, 0, BUFFER_SIZE);
+
     int bytes_sent = 0;
     double end = get_time() + duration;
     while (get_time() < end) {

@@ -11,6 +11,7 @@
 #define BUFFER_SIZE 1000
 #define MAX_CLIENT 10
 
+// TODO : Not sure if these should be global
 struct sockaddr_in server_addr, client_addr;
 
 /* get_time function */
@@ -60,8 +61,24 @@ void
 handle_client(const char *addr, int port, int duration) {
     /* TODO: Implement client mode operation here */
     /* 1. Create a TCP/IP socket with socket system call */
+    int client_fd = socket(AF_INET6, SOCK_STREAM, 0);
+    if (client_fd == -1) return;
+    
+    // create socket
+    client_addr.sin_family = AF_INET;
+    // IP address = INADDR_ANY (kernel chooses)
+    client_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    // Port number = parameter
+    client_addr.sin_port = htons(port);
+
     /* 2. `connect` to the server specified by arguments (`addr`, `port`) */
+    int connect_status = connect(client_fd, (struct sockaddr *) &server_addr, sizeof(server_addr));
+    if (connect_status == -1) return;
     /* 3. Send data to the connected server in chunks of 1000bytes */
+    clock_t start = clock(), end = clock();
+    while ((end - start)/CLOCKS_PER_SEC < duration) {
+        // send(client_fd, )
+    }
     /* 4. Close the connection after `duration` seconds */
     /* 5. When the connection is closed, the program should print out the elapsed time, */
     /*    the total number of bytes sent (in kilobytes), and the rate */ 

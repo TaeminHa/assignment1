@@ -55,12 +55,18 @@ handle_server(int port) {
 
     // TODO : How does the server know when connection closes
     // like what goes into the while (???)
+    char* msg;
+    memset(msg, 0, BUFFER_SIZE);
+    while (recv(server_fd, msg, BUFFER_SIZE, 0) >= 0) {
+        // do sth
+        bytes_received += BUFFER_SIZE;
+    }
 
     /* 6. When the connection is closed, the program should print out the elapsed time, */
     /*    the total number of bytes received (in kilobytes), and the rate */ 
     /*    at which the program received data (in Mbps) */
     double duration = get_time() - start;
-    printf("%f kilobytes received in %f seconds at the rate of %f Mbps", bytes_received/1000, duration, ((bytes_received/1e6) / duration));
+    printf("%f kilobytes received in %f seconds at the rate of %f Mbps", bytes_received/1000.0, duration, ((bytes_received/1e6) / duration));
 
     return;
 }
@@ -83,6 +89,7 @@ handle_client(const char *addr, int port, int duration) {
     int connect_status = connect(client_fd, (struct sockaddr *) &server_addr, sizeof(server_addr));
     if (connect_status == -1) return;
     /* 3. Send data to the connected server in chunks of 1000bytes */
+    // segfault bc we need to malloc first i think
     char* msg;
     memset(msg, 0, BUFFER_SIZE);
 
@@ -98,7 +105,7 @@ handle_client(const char *addr, int port, int duration) {
     /*    the total number of bytes sent (in kilobytes), and the rate */ 
     /*    at which the program sent data (in Mbps) */
     //?????
-    printf("%f kilobytes sent in %f seconds at the rate of %f Mbps", bytes_sent/1000, duration, ((bytes_sent/1000000) / duration));
+    printf("%f kilobytes sent in %f seconds at the rate of %f Mbps", bytes_sent/1000.0, duration * 1.0, ((bytes_sent/1e6) / duration));
     return;
 }
 

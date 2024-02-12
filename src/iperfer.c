@@ -29,17 +29,16 @@ void
 handle_server(int port) {
     /* TODO: Implement server mode operation here */
     struct sockaddr_in sin;
-
     char buffer[BUFFER_SIZE];
 
     /* 1. Create a TCP/IP socket with `socket` system call */
-    // set the address
+    // zero out struct
     bzero((char *)&sin, sizeof(sin));
+
+    // set the protocol, address, and port
     sin.sin_family = AF_INET;
     sin.sin_addr.s_addr = INADDR_ANY;
     sin.sin_port = htons(port);
-
-    int buf_len, addr_len;
 
     int server_fd;
 
@@ -58,7 +57,7 @@ handle_server(int port) {
     /* 3. `listen` for TCP connections */
     listen(server_fd, MAX_CLIENT);
 
-    int client_fd;
+    int client_fd, addr_len;
     /* 4. Wait for the client connection with `accept` system call */
     if ((client_fd = accept(server_fd, (struct sockaddr *)&sin, &addr_len)) < 0) {
         perror("simplex-talk: accept");
@@ -68,9 +67,10 @@ handle_server(int port) {
     /* 5. After the connection is established, received data in chunks of 1000 bytes */
     int bytes_received = 0;
     double start = get_time();
+    int buf_len;
 
     while (buf_len = recv(client_fd, buffer, sizeof(buffer), 0)){
-        bytes_received += BUFFER_SIZE;
+        bytes_received += buf_len;
     }
     
     close(client_fd);
@@ -88,15 +88,12 @@ handle_server(int port) {
 void
 handle_client(const char *addr, int port, int duration) {
     /* TODO: Implement client mode operation here */
-
     struct sockaddr_in sin;
     char buffer[BUFFER_SIZE];
-    int client_fd;
-    int len;
-    struct hostent *hp;
 
     /* 1. Create a TCP/IP socket with socket system call */
     /* translate host name into peer's IP address */
+    struct hostent *hp;
     hp = gethostbyname(addr);
     if (!hp) {
         fprintf(stderr, "simplex-talk: unknown host: %s\n", addr);
@@ -110,6 +107,8 @@ handle_client(const char *addr, int port, int duration) {
     sin.sin_port = htons(port);
 
     /* active open */
+    int client_fd;
+
     if ((client_fd = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
         perror("simplex-talk: socket");
         exit(1);
@@ -124,22 +123,14 @@ handle_client(const char *addr, int port, int duration) {
     }
 
     /* 3. Send data to the connected server in chunks of 1000bytes */
-    // while (fgets(buffer, sizeof(buffer), stdin)) {
-    //     buffer[BUFFER_SIZE-1] = '\0';
-    //     len = strlen(buffer) + 1;
-    //     send(client_fd, buffer, len, 0);
-    // }
     int bytes_sent = 0;
     double end = get_time() + duration;
 
-    char* msg = malloc(BUFFER_SIZE);
-    memset(msg, 0, BUFFER_SIZE);
+    char msg[BUFFER_SIZE];
 
     while (get_time() < end) {
-        // printf("%s %f\n", msg, get_time());
         bytes_sent += send(client_fd, msg, BUFFER_SIZE, 0);
     }
-
 
     /* 4. Close the connection after `duration` seconds */
     close(client_fd);
@@ -196,7 +187,16 @@ main(int argc, char *argv[]) {
 
         /* TODO: Implement argument check here */
         /* 1. Check server_tcp_port is within the port number range */
+        if (server_tcp_port < 0 || server_tcp_port > PORT_MAX) {
+            fprintf(stderr, "TCP port is not within the valid range\n");
+            exit(EXIT_FAILURE);
+        }
+
         /* 2. Check the duration is a positive number */
+        if (duration < 0) {
+            fprintf(stderr, "Duration must be a positive number\n");
+            exit(EXIT_FAILURE);
+        }
 
         printf("Client mode: Server IP = %s, Port = %d, Time Window = %d\n", server_host_ipaddr, server_tcp_port, duration);
         handle_client (server_host_ipaddr, server_tcp_port, duration);

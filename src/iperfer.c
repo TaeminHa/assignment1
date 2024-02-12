@@ -40,9 +40,8 @@ handle_server(int port) {
     sin.sin_addr.s_addr = INADDR_ANY;
     sin.sin_port = htons(port);
 
-    int server_fd;
-
     // create socket 
+    int server_fd;
     if ((server_fd = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
         perror("simplex-talk: socket");
         exit(1);
@@ -64,7 +63,7 @@ handle_server(int port) {
         exit(1);
     }
 
-    /* 5. After the connection is established, received data in chunks of 1000 bytes */
+    /* 5. After the connection is established, receive data in chunks of 1000 bytes */
     int bytes_received = 0;
     double start = get_time();
     int buf_len;
@@ -108,7 +107,6 @@ handle_client(const char *addr, int port, int duration) {
 
     /* active open */
     int client_fd;
-
     if ((client_fd = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
         perror("simplex-talk: socket");
         exit(1);
@@ -210,6 +208,10 @@ main(int argc, char *argv[]) {
 
         /* TODO: Implement argument check here */
         /* Check server_tcp_port is within the port number range */
+        if (server_tcp_port < 0 || server_tcp_port > PORT_MAX) {
+            fprintf(stderr, "TCP port is not within the valid range\n");
+            exit(EXIT_FAILURE);
+        }
         
         printf("Server mode, Port = %d\n", server_tcp_port);
         handle_server(server_tcp_port);

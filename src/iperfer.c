@@ -7,12 +7,12 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <netdb.h>
+
+
 #define PORT_MAX (1<<16)-1 // 65535
 #define BUFFER_SIZE 1000
 #define MAX_CLIENT 10
-
-// TODO : Not sure if these should be global
-struct sockaddr_in server_addr, client_addr;
 
 /* get_time function */
 /* Input: None */
@@ -28,39 +28,52 @@ get_time(void) {
 void
 handle_server(int port) {
     /* TODO: Implement server mode operation here */
-    // https://man7.org/linux/man-pages/man2/socket.2.html - man page with examples
+    struct sockaddr_in sin;
+
+    char buffer[BUFFER_SIZE];
+
     /* 1. Create a TCP/IP socket with `socket` system call */
-    // AF_INET6 = IPv6 protocol; SOCK_STREAM = TCP, 0 = single protocol per socket
-    int server_fd = socket(AF_INET6, SOCK_STREAM, 0);
-    if (server_fd == -1) return;
-    
-    // create socket
-    server_addr.sin_family = AF_INET;
-    // IP address = INADDR_ANY (kernel chooses)
-    server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    // Port number = parameter
-    server_addr.sin_port = htons(port);
+    // set the address
+    bzero((char *)&sin, sizeof(sin));
+    sin.sin_family = AF_INET;
+    sin.sin_addr.s_addr = INADDR_ANY;
+    sin.sin_port = htons(port);
+
+    int buf_len, addr_len;
+
+    int server_fd;
+
+    // create socket 
+    if ((server_fd = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
+        perror("simplex-talk: socket");
+        exit(1);
+    }
 
     /* 2. `bind` socket to the given port number */
-    bind(server_fd, (struct sockaddr*)&server_addr, sizeof(server_addr));
+    if ((bind(server_fd, (struct sockaddr *)&sin, sizeof(sin))) < 0) {
+        perror("simplex-talk: bind");
+        exit(1);
+    }
+
     /* 3. `listen` for TCP connections */
     listen(server_fd, MAX_CLIENT);
+
+    int client_fd;
     /* 4. Wait for the client connection with `accept` system call */
-    socklen_t client_length = sizeof(client_addr);
-    // client_addr and client_length are resultant parameter
-    int client_fd = accept(server_fd,  (struct sockaddr*)&client_addr, &client_length);
+    if ((client_fd = accept(server_fd, (struct sockaddr *)&sin, &addr_len)) < 0) {
+        perror("simplex-talk: accept");
+        exit(1);
+    }
+
     /* 5. After the connection is established, received data in chunks of 1000 bytes */
     int bytes_received = 0;
     double start = get_time();
 
-    // TODO : How does the server know when connection closes
-    // like what goes into the while (???)
-    char* msg;
-    memset(msg, 0, BUFFER_SIZE);
-    while (recv(server_fd, msg, BUFFER_SIZE, 0) >= 0) {
-        // do sth
+    while (buf_len = recv(client_fd, buffer, sizeof(buffer), 0)){
         bytes_received += BUFFER_SIZE;
     }
+    
+    close(client_fd);
 
     /* 6. When the connection is closed, the program should print out the elapsed time, */
     /*    the total number of bytes received (in kilobytes), and the rate */ 
@@ -69,43 +82,74 @@ handle_server(int port) {
     printf("%f kilobytes received in %f seconds at the rate of %f Mbps", bytes_received/1000.0, duration, ((bytes_received/1e6) / duration));
 
     return;
+
 }
 
 void
 handle_client(const char *addr, int port, int duration) {
     /* TODO: Implement client mode operation here */
+
+    struct sockaddr_in sin;
+    char buffer[BUFFER_SIZE];
+    int client_fd;
+    int len;
+    struct hostent *hp;
+
     /* 1. Create a TCP/IP socket with socket system call */
-    int client_fd = socket(AF_INET6, SOCK_STREAM, 0);
-    if (client_fd == -1) return;
-    
-    // create socket
-    client_addr.sin_family = AF_INET;
-    // IP address = INADDR_ANY (kernel chooses)
-    client_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    // Port number = parameter
-    client_addr.sin_port = htons(port);
+    /* translate host name into peer's IP address */
+    hp = gethostbyname(addr);
+    if (!hp) {
+        fprintf(stderr, "simplex-talk: unknown host: %s\n", addr);
+        exit(1);
+    }
+
+    /* build address data structure */
+    bzero((char *)&sin, sizeof(sin));
+    sin.sin_family = AF_INET;
+    bcopy(hp->h_addr, (char *)&sin.sin_addr, hp->h_length);
+    sin.sin_port = htons(port);
+
+    /* active open */
+    if ((client_fd = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
+        perror("simplex-talk: socket");
+        exit(1);
+    }
 
     /* 2. `connect` to the server specified by arguments (`addr`, `port`) */
-    int connect_status = connect(client_fd, (struct sockaddr *) &server_addr, sizeof(server_addr));
-    if (connect_status == -1) return;
-    /* 3. Send data to the connected server in chunks of 1000bytes */
-    // segfault bc we need to malloc first i think
-    char* msg;
-    memset(msg, 0, BUFFER_SIZE);
+    if (connect(client_fd, (struct sockaddr *)&sin, sizeof(sin)) < 0)
+    {
+        perror("simplex-talk: connect");
+        close(client_fd);
+        exit(1);
+    }
 
+    /* 3. Send data to the connected server in chunks of 1000bytes */
+    // while (fgets(buffer, sizeof(buffer), stdin)) {
+    //     buffer[BUFFER_SIZE-1] = '\0';
+    //     len = strlen(buffer) + 1;
+    //     send(client_fd, buffer, len, 0);
+    // }
     int bytes_sent = 0;
     double end = get_time() + duration;
+
+    char* msg = malloc(BUFFER_SIZE);
+    memset(msg, 0, BUFFER_SIZE);
+
     while (get_time() < end) {
-        send(client_fd, msg, BUFFER_SIZE, 0);
-        bytes_sent += BUFFER_SIZE;
+        // printf("%s %f\n", msg, get_time());
+        bytes_sent += send(client_fd, msg, BUFFER_SIZE, 0);
     }
+
+
     /* 4. Close the connection after `duration` seconds */
     close(client_fd);
+
     /* 5. When the connection is closed, the program should print out the elapsed time, */
     /*    the total number of bytes sent (in kilobytes), and the rate */ 
     /*    at which the program sent data (in Mbps) */
-    //?????
     printf("%f kilobytes sent in %f seconds at the rate of %f Mbps", bytes_sent/1000.0, duration * 1.0, ((bytes_sent/1e6) / duration));
+
+
     return;
 }
 
